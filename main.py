@@ -3,6 +3,7 @@ from pygame.locals import *
 from random import randint
 import sys
 import json
+
 # Initialisation de Pygame
 pygame.init()
 # Initialisation de la musique
@@ -12,17 +13,17 @@ pygame.mixer.music.play(-1)
 # Paramètres du jeu
 windowWidth, windowHeight = 800, 600
 playerStep, appleStep = 44, 44
-updateCountMax = 10
+updateCountMax = 60
 
-
-right = 0
+# Pour les sprites not working
+"""right = 0
 left = 1
 up = 2
 down = 3
 downleft = 4
 downright = 5
 upleft = 6
-upright = 7
+upright = 7"""
 
 # Couleurs
 black = (0, 0, 0)
@@ -33,8 +34,8 @@ pygame.display.set_caption('Pygame Snake')
 
 # Chargement des images
 playerImage = pygame.image.load("img/snake.png").convert_alpha()
-
-playerHeadImage = playerImage.subsurface(pygame.Rect((16, 0, 16, 16)))
+# Pour les sprites not working
+"""playerHeadImage = playerImage.subsurface(pygame.Rect((16, 0, 16, 16)))
 playerHeadImage = pygame.transform.scale(playerHeadImage, (playerStep, playerStep))
 
 playerTailImage = playerImage.subsurface(pygame.Rect((16, 16, 16, 16)))
@@ -45,11 +46,11 @@ playerCorImage = pygame.transform.scale(playerCorImage, (playerStep, playerStep)
 
 playerBodImage = playerImage.subsurface(pygame.Rect((16, 48, 16, 16)))
 playerBodImage = pygame.transform.scale(playerBodImage, (playerStep, playerStep))
-
+"""
 playerRectImage = playerImage.subsurface(pygame.Rect((48, 48, 16, 16)))
 playerRectImage = pygame.transform.scale(playerRectImage, (playerStep, playerStep))
-
-playerHead = {
+# Pour les sprites not working
+"""playerHead = {
     up : pygame.transform.rotate(playerHeadImage, 90),
     left : pygame.transform.rotate(playerHeadImage, 180),
     down : pygame.transform.rotate(playerHeadImage, 270),
@@ -73,7 +74,7 @@ playerTail = {
     left : pygame.transform.rotate(playerTailImage, 180),
     down : pygame.transform.rotate(playerTailImage, 270),
     right : pygame.transform.rotate(playerTailImage, 0)
-}
+}"""
 
 foodImage = pygame.image.load("img/food.png").convert_alpha()
 foodImage = pygame.transform.scale(foodImage, (appleStep, appleStep))
@@ -183,11 +184,9 @@ def save_score(name, score):
     except FileNotFoundError:
         scores = []
 
-    # Add the new score
     newScore = {"name": name, "score": score}
     scores.append(newScore)
 
-    # Save the updated scores
     with open("scores.json", "w") as file:
         json.dump(scores, file)
 
@@ -199,14 +198,14 @@ def display_top10scores():
     except FileNotFoundError:
         scores = []
 
-    # Sort the scores by the 'score' key in descending order
+    # Trie des scores
     scores.sort(key=lambda x: x['score'], reverse=True)
 
     font = pygame.font.SysFont(None, 25)
     titleText = font.render("Top 10 Joueurs", True, (255, 255, 255))
     window.blit(titleText, (windowWidth // 2 - 60, 250))
 
-    # Display the top 10 scores
+    # Affichage des 10 meilleurs scores
     for i in range(min(10, len(scores))):
         scoreText = font.render(f"{scores[i]['name']} : {scores[i]['score']}", True, (255, 255, 255))
         window.blit(scoreText, (windowWidth // 2 - 60, 280 + i * 20))
@@ -215,7 +214,6 @@ def display_top10scores():
 
 # Fonction d'affichage du menu
 def display_menu(score):
-    print("test2")
     window.blit(menuImage, (0, 0))
     
     font = pygame.font.SysFont(None, 36)
@@ -227,19 +225,15 @@ def display_menu(score):
     window.blit(scoreText, (windowWidth // 2 - 60, 200))
 
     display_top10scores()
-    print("test3")
-    # Create a "Rejouer" button
+    
     buttonRect = pygame.Rect(windowWidth // 2 - 50, 500, 100, 50)
-    pygame.draw.rect(window, (0, 255, 0, 50), buttonRect)  # Green color for the button
-    print("test4")
+    pygame.draw.rect(window, (0, 255, 0, 50), buttonRect) 
     # Display the text on the button
     buttonFont = pygame.font.SysFont(None, 25)
-    buttonText = buttonFont.render("Rejouer", True, (0, 0, 0))  # Black color for the text
+    buttonText = buttonFont.render("Rejouer", True, (0, 0, 0))
     window.blit(buttonText, (windowWidth // 2 - 30, 515))
 
     pygame.display.flip()
-    print("test5")
-    # Check if the button is clicked
     while True:
         for event in pygame.event.get():
             if event.type == QUIT:
@@ -248,7 +242,7 @@ def display_menu(score):
             if event.type == MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 if buttonRect.collidepoint(mouse_x, mouse_y):
-                    # If clicked, reset the game
+                    
                     gameOver = False
                     return gameOver
         clock.tick(30)
@@ -265,33 +259,31 @@ while running:
         if playerName == "":
             playerName = input_name()
             save_score(playerName, score)
-        print("test1")
+
         display_menu(score)
         playerX, playerY, playerDirection, liPlayerDirection, playerLength, updateCount, score, gameOver, playerName = init_player()
-        print("test6")
+
 
     else:
+        currentDirection = playerDirection
         for event in pygame.event.get():
             if event.type == QUIT:
                 running = False
-
-        keys = pygame.key.get_pressed()
-
-        if keys[K_RIGHT] and playerDirection != 1:
-            playerDirection = 0
-        
-        if keys[K_LEFT] and playerDirection != 0:
-            playerDirection = 1
-        
-        if keys[K_UP] and playerDirection != 3:
-            playerDirection = 2
-        
-        if keys[K_DOWN] and playerDirection != 2:
-            playerDirection = 3
-        
-
+            elif event.type == KEYDOWN:
+                if event.key == K_RIGHT and currentDirection != 1:
+                    playerDirection = 0
+                    currentDirection = playerDirection
+                elif event.key == K_LEFT and currentDirection != 0:
+                    playerDirection = 1
+                    currentDirection = playerDirection
+                elif event.key == K_UP and currentDirection != 3:
+                    playerDirection = 2
+                    currentDirection = playerDirection
+                elif event.key == K_DOWN and currentDirection != 2:
+                    playerDirection = 3
+                    currentDirection = playerDirection
         # Mise à jour du joueur
-        updateCount += 1
+        updateCount += 10
         if updateCount > updateCountMax:
             for i in range(playerLength - 1, 0, -1):
                 playerX[i] = playerX[i - 1]
@@ -309,11 +301,11 @@ while running:
 
             # Vérifier si le serpent sort de l'écran
             if (playerX[0] < 0 or playerX[0] > windowWidth - playerStep or  playerY[0] < 0 or playerY[0] > windowHeight - playerStep):
-                print("Vous avez perdu ! Bordure : ")
-                print("x[0] (" + str(playerX[0]) + "," + str(playerY[0]) + ")")
                 gameOver = True
 
             updateCount = 0
+
+            # #########################################
 
         # Vérifier si le serpent mange la pomme
         if isCollision(foodX, foodY, playerX[0], playerY[0], 40):
@@ -329,16 +321,20 @@ while running:
         # Vérifier si le serpent entre en collision avec lui-même
         for i in range(2, playerLength):
             if isCollision(playerX[0], playerY[0], playerX[i], playerY[i], 40):
-                print("Vous avez perdu ! Collision : ")
-                print("x[0] (" + str(playerX[0]) + "," + str(playerY[0]) + ")")
-                print("x[" + str(i) + "] (" + str(playerX[i]) + "," + str(playerY[i]) + ")")
+                print("Collision")
+                print(playerX[0], playerY[0], playerX[i], playerY[i])
+                print(playerX, playerY)
+                print(playerLength)
+                print(playerDirection)
+                print(liPlayerDirection)
+                print(currentDirection)
                 gameOver = True
 
         # Affichage
-        
         window.fill(black)
         window.blit(grassImage, (0, 0))
         display_score(score)
+        # Pour les sprites not working
         """for i in range(0, playerLength):
             if i == 0:
                 window.blit(playerHead[playerDirection], (playerX[i], playerY[i]))
