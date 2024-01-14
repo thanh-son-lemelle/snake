@@ -1,15 +1,28 @@
 import pygame
 from pygame.locals import *
 from random import randint
-
+import sys
+import json
 # Initialisation de Pygame
 pygame.init()
+# Initialisation de la musique
+music = pygame.mixer.music.load("ost.mp3")
+pygame.mixer.music.play(-1)
 
 # Paramètres du jeu
 windowWidth, windowHeight = 800, 600
 playerStep, appleStep = 44, 44
-playerLength = 3
-updateCountMax = 2
+updateCountMax = 10
+
+
+right = 0
+left = 1
+up = 2
+down = 3
+downleft = 4
+downright = 5
+upleft = 6
+upright = 7
 
 # Couleurs
 black = (0, 0, 0)
@@ -19,20 +32,80 @@ window = pygame.display.set_mode((windowWidth, windowHeight))
 pygame.display.set_caption('Pygame Snake')
 
 # Chargement des images
-playerImage = pygame.image.load("img/idle_animation/idle00.png").convert()
-foodImage = pygame.image.load("img/food/bootle.png").convert()
+playerImage = pygame.image.load("img/snake.png").convert_alpha()
+
+playerHeadImage = playerImage.subsurface(pygame.Rect((16, 0, 16, 16)))
+playerHeadImage = pygame.transform.scale(playerHeadImage, (playerStep, playerStep))
+
+playerTailImage = playerImage.subsurface(pygame.Rect((16, 16, 16, 16)))
+playerTailImage = pygame.transform.scale(playerTailImage, (playerStep, playerStep))
+
+playerCorImage = playerImage.subsurface(pygame.Rect((32, 32, 16, 16)))
+playerCorImage = pygame.transform.scale(playerCorImage, (playerStep, playerStep))
+
+playerBodImage = playerImage.subsurface(pygame.Rect((16, 48, 16, 16)))
+playerBodImage = pygame.transform.scale(playerBodImage, (playerStep, playerStep))
+
+playerRectImage = playerImage.subsurface(pygame.Rect((48, 48, 16, 16)))
+playerRectImage = pygame.transform.scale(playerRectImage, (playerStep, playerStep))
+
+playerHead = {
+    up : pygame.transform.rotate(playerHeadImage, 90),
+    left : pygame.transform.rotate(playerHeadImage, 180),
+    down : pygame.transform.rotate(playerHeadImage, 270),
+    right : pygame.transform.rotate(playerHeadImage, 0)
+}
+
+playerBody = {
+    up : pygame.transform.rotate(playerBodImage, 90),
+    left : pygame.transform.rotate(playerBodImage, 180),
+    down : pygame.transform.rotate(playerBodImage, 270),
+    right : pygame.transform.rotate(playerBodImage, 0),
+
+    downleft : pygame.transform.rotate(playerCorImage, 0),
+    downright : pygame.transform.rotate(playerCorImage, 90),
+    upleft : pygame.transform.rotate(playerCorImage, 270),
+    upright : pygame.transform.rotate(playerCorImage, 180),
+}
+
+playerTail = {
+    up : pygame.transform.rotate(playerTailImage, 90),
+    left : pygame.transform.rotate(playerTailImage, 180),
+    down : pygame.transform.rotate(playerTailImage, 270),
+    right : pygame.transform.rotate(playerTailImage, 0)
+}
+
+foodImage = pygame.image.load("img/food.png").convert_alpha()
+foodImage = pygame.transform.scale(foodImage, (appleStep, appleStep))
+
+menuImage = pygame.image.load("img/menu.png").convert()
+menuImage = pygame.transform.scale(menuImage, (windowWidth, windowHeight))
+
+grassImage = pygame.image.load("img/grass.jpg").convert()
+grassImage = pygame.transform.scale(grassImage, (windowWidth, windowHeight))
 
 # Initialisation du joueur
-playerX, playerY = [0], [0]
-playerDirection = 0
-updateCount = 0
+def init_player():
+    playerX, playerY = [0], [0]
+    liPLayerDirection = [0,0,0]
+    playerDirection = 0
+    playerLength = 3
+    updateCount = 0
+    score = 0
+    gameOver = False
+    playerName = ""
 
-for i in range(1, 2000):
-    playerX.append(-100)
-    playerY.append(-100)
+    for i in range(1, 2000):
+        playerX.append(-100)
+        playerY.append(-100)
 
-playerX[1] = 1 * playerStep
-playerX[2] = 2 * playerStep
+    playerX[1] = 1 * playerStep
+    playerX[2] = 2 * playerStep
+    
+
+    return playerX, playerY, playerDirection, liPLayerDirection, playerLength, updateCount, score, gameOver, playerName
+
+
 
 # Initialisation de la pomme
 foodX = randint(2, 9) * appleStep
@@ -42,67 +115,247 @@ foodY = randint(2, 9) * appleStep
 def isCollision(x1, y1, x2, y2, size):
     return x2 <= x1 <= x2 + size and y2 <= y1 <= y2 + size
 
+# Fonction d'affichage du score
+def display_score(score):
+    font = pygame.font.SysFont(None, 25)
+    scoreText = font.render("Score: " + str(score), True, (255, 255, 255))
+    window.blit(scoreText, (10, 10))
+
+# Fonction de récupération du pseudo
+def get_player_name():
+    playerName = input("Entrez votre pseudo : ")
+    return playerName
+
+def input_name():
+    font = pygame.font.SysFont(None, 36)
+    textFont = pygame.font.SysFont(None, 25)
+    inputBox = pygame.Rect(windowWidth // 2 - 100, windowHeight // 2, 200, 40)
+    colorInactive = pygame.Color('lightskyblue3')
+    colorActive = pygame.Color('dodgerblue2')
+    color = colorInactive
+    active = False
+    clock = pygame.time.Clock()
+    playerName = ""
+    name = False
+
+    while name == False:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == MOUSEBUTTONDOWN:
+                if inputBox.collidepoint(event.pos):
+                    active = not active
+                else:
+                    active = False
+                color = colorActive if active else colorInactive
+            if event.type == KEYDOWN:
+                if active:
+                    if event.key == K_RETURN:
+                        if playerName != "":
+                            name = True
+                            return playerName
+                    elif event.key == K_BACKSPACE:
+                        playerName = playerName[:-1]
+                    else:
+                        playerName += event.unicode
+        
+        window.blit(menuImage, (0, 0))
+
+        txtSurface = font.render(playerName, True, color)
+        width = max(200, txtSurface.get_width()+10)
+        inputBox.w = width
+        window.blit(txtSurface, (inputBox.x+5, inputBox.y+5))
+        pygame.draw.rect(window, color, inputBox, 2)
+        
+        label = textFont.render("Entrez votre pseudo", True, (255, 255, 255))
+        window.blit(label, (windowWidth // 2 - label.get_width() // 2, inputBox.y - 30))
+
+        pygame.display.flip()
+        clock.tick(30)
+
+# Fonction de sauvegarde du score
+def save_score(name, score):
+    try:
+        # Load existing scores from the file
+        with open("scores.json", "r") as file:
+             scores = json.load(file)
+    except FileNotFoundError:
+        scores = []
+
+    # Add the new score
+    newScore = {"name": name, "score": score}
+    scores.append(newScore)
+
+    # Save the updated scores
+    with open("scores.json", "w") as file:
+        json.dump(scores, file)
+
+# Fonction d'affichage des 10 meilleurs scores
+def display_top10scores():
+    try:
+        with open("scores.json", "r") as file:
+            scores = json.load(file)
+    except FileNotFoundError:
+        scores = []
+
+    # Sort the scores by the 'score' key in descending order
+    scores.sort(key=lambda x: x['score'], reverse=True)
+
+    font = pygame.font.SysFont(None, 25)
+    titleText = font.render("Top 10 Joueurs", True, (255, 255, 255))
+    window.blit(titleText, (windowWidth // 2 - 60, 250))
+
+    # Display the top 10 scores
+    for i in range(min(10, len(scores))):
+        scoreText = font.render(f"{scores[i]['name']} : {scores[i]['score']}", True, (255, 255, 255))
+        window.blit(scoreText, (windowWidth // 2 - 60, 280 + i * 20))
+
+    pygame.display.flip()
+
+# Fonction d'affichage du menu
+def display_menu(score):
+    print("test2")
+    window.blit(menuImage, (0, 0))
+    
+    font = pygame.font.SysFont(None, 36)
+    titleText = font.render("Snake Game", True, (255, 255, 255))
+    window.blit(titleText, (windowWidth // 2 - 80, 100))
+
+    font = pygame.font.SysFont(None, 25)
+    scoreText = font.render("Your Score: " + str(score), True, (255, 255, 255))
+    window.blit(scoreText, (windowWidth // 2 - 60, 200))
+
+    display_top10scores()
+    print("test3")
+    # Create a "Rejouer" button
+    buttonRect = pygame.Rect(windowWidth // 2 - 50, 500, 100, 50)
+    pygame.draw.rect(window, (0, 255, 0, 50), buttonRect)  # Green color for the button
+    print("test4")
+    # Display the text on the button
+    buttonFont = pygame.font.SysFont(None, 25)
+    buttonText = buttonFont.render("Rejouer", True, (0, 0, 0))  # Black color for the text
+    window.blit(buttonText, (windowWidth // 2 - 30, 515))
+
+    pygame.display.flip()
+    print("test5")
+    # Check if the button is clicked
+    while True:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if buttonRect.collidepoint(mouse_x, mouse_y):
+                    # If clicked, reset the game
+                    gameOver = False
+                    return gameOver
+        clock.tick(30)
+
+
 # Boucle principale
 running = True
 clock = pygame.time.Clock()
+playerX, playerY, playerDirection, liPlayerDirection, playerLength, updateCount, score, gameOver, playerName = init_player()
 
 while running:
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            running = False
+    # Affichage du menu
+    if gameOver:
+        if playerName == "":
+            playerName = input_name()
+            save_score(playerName, score)
+        print("test1")
+        display_menu(score)
+        playerX, playerY, playerDirection, liPlayerDirection, playerLength, updateCount, score, gameOver, playerName = init_player()
+        print("test6")
 
-    keys = pygame.key.get_pressed()
+    else:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                running = False
 
-    if keys[K_RIGHT] and playerDirection != 1:
-        playerDirection = 0
-    if keys[K_LEFT] and playerDirection != 0:
-        playerDirection = 1
-    if keys[K_UP] and playerDirection != 3:
-        playerDirection = 2
-    if keys[K_DOWN] and playerDirection != 2:
-        playerDirection = 3
+        keys = pygame.key.get_pressed()
 
-    # Mise à jour du joueur
-    updateCount += 1
-    if updateCount > updateCountMax:
-        for i in range(playerLength - 1, 0, -1):
-            playerX[i] = playerX[i - 1]
-            playerY[i] = playerY[i - 1]
+        if keys[K_RIGHT] and playerDirection != 1:
+            playerDirection = 0
+        
+        if keys[K_LEFT] and playerDirection != 0:
+            playerDirection = 1
+        
+        if keys[K_UP] and playerDirection != 3:
+            playerDirection = 2
+        
+        if keys[K_DOWN] and playerDirection != 2:
+            playerDirection = 3
+        
 
-        if playerDirection == 0:
-            playerX[0] += playerStep
-        elif playerDirection == 1:
-            playerX[0] -= playerStep
-        elif playerDirection == 2:
-            playerY[0] -= playerStep
-        elif playerDirection == 3:
-            playerY[0] += playerStep
+        # Mise à jour du joueur
+        updateCount += 1
+        if updateCount > updateCountMax:
+            for i in range(playerLength - 1, 0, -1):
+                playerX[i] = playerX[i - 1]
+                playerY[i] = playerY[i - 1]
+                liPlayerDirection.insert(0, playerDirection)
 
-        updateCount = 0
+            if playerDirection == 0:
+                playerX[0] += playerStep
+            elif playerDirection == 1:
+                playerX[0] -= playerStep
+            elif playerDirection == 2:
+                playerY[0] -= playerStep
+            elif playerDirection == 3:
+                playerY[0] += playerStep
 
-    # Vérifier si le serpent mange la pomme
-    if isCollision(foodX, foodY, playerX[0], playerY[0], 40):
-        foodX = randint(2, 9) * appleStep
-        foodY = randint(2, 9) * appleStep
-        playerLength += 1
+            # Vérifier si le serpent sort de l'écran
+            if (playerX[0] < 0 or playerX[0] > windowWidth - playerStep or  playerY[0] < 0 or playerY[0] > windowHeight - playerStep):
+                print("Vous avez perdu ! Bordure : ")
+                print("x[0] (" + str(playerX[0]) + "," + str(playerY[0]) + ")")
+                gameOver = True
 
-    # Vérifier si le serpent entre en collision avec lui-même
-    for i in range(2, playerLength):
-        if isCollision(playerX[0], playerY[0], playerX[i], playerY[i], 40):
-            print("Vous avez perdu ! Collision : ")
-            print("x[0] (" + str(playerX[0]) + "," + str(playerY[0]) + ")")
-            print("x[" + str(i) + "] (" + str(playerX[i]) + "," + str(playerY[i]) + ")")
-            running = False
+            updateCount = 0
 
-    # Affichage
-    window.fill(black)
-    for i in range(0, playerLength):
-        window.blit(playerImage, (playerX[i], playerY[i]))
+        # Vérifier si le serpent mange la pomme
+        if isCollision(foodX, foodY, playerX[0], playerY[0], 40):
+            while True:
+                foodX = randint(2, 9) * appleStep
+                foodY = randint(2, 9) * appleStep
+                # Check if the new food position is not in collision with any part of the snake's body
+                if all(foodX != playerX[i] or foodY != playerY[i] for i in range(playerLength)):
+                    playerLength += 1
+                    score += 1
+                    break
 
-    window.blit(foodImage, (foodX, foodY))
-    pygame.display.flip()
+        # Vérifier si le serpent entre en collision avec lui-même
+        for i in range(2, playerLength):
+            if isCollision(playerX[0], playerY[0], playerX[i], playerY[i], 40):
+                print("Vous avez perdu ! Collision : ")
+                print("x[0] (" + str(playerX[0]) + "," + str(playerY[0]) + ")")
+                print("x[" + str(i) + "] (" + str(playerX[i]) + "," + str(playerY[i]) + ")")
+                gameOver = True
 
-    clock.tick(25)
+        # Affichage
+        
+        window.fill(black)
+        window.blit(grassImage, (0, 0))
+        display_score(score)
+        """for i in range(0, playerLength):
+            if i == 0:
+                window.blit(playerHead[playerDirection], (playerX[i], playerY[i]))
+            elif i == playerLength - 1:
+                
+                print(liPlayerDirection)
+                window.blit(playerTail[liPlayerDirection[i]], (playerX[i], playerY[i]))
+            else:
+                window.blit(playerBody[playerDirection], (playerX[i], playerY[i]))"""
+        for i in range(0, playerLength):
+            window.blit(playerRectImage, (playerX[i], playerY[i]))
+
+
+        window.blit(foodImage, (foodX, foodY))
+        pygame.display.flip()
+
+        clock.tick(60)
 
 # Quitter Pygame
 pygame.quit()
